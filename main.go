@@ -9,7 +9,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type model struct{}
+type model struct {
+	Table table.Model
+}
 
 type Coin struct {
 	Name   string
@@ -20,6 +22,10 @@ type Coin struct {
 func (m model) Init() tea.Cmd {
 	return nil
 }
+
+var baseStyle = lipgloss.NewStyle().
+	BorderStyle(lipgloss.NormalBorder()).
+	BorderForeground(lipgloss.Color("240"))
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -34,12 +40,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	return "Hello, World! Press q to quit."
+	return baseStyle.Render(m.Table.View()) + "\n"
+
 }
 
 func main() {
-	fmt.Println("Hello, World!")
-
 	p := tea.NewProgram(model{})
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Error running program: %v\n", err)
@@ -72,11 +77,13 @@ func main() {
 	t := table.New(
 		table.WithColumns(columns),
 		table.WithRows(rows),
+		table.WithFocused(true),
 	)
 	t.SetHeight(10)
 	t.SetStyles(s)
 
 	m := model{t}
+
 	if _, err := tea.NewProgram(m).Run(); err != nil {
 		fmt.Println("Error running program:", err)
 		os.Exit(1)
