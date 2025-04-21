@@ -45,12 +45,6 @@ func (m model) View() string {
 }
 
 func main() {
-	p := tea.NewProgram(model{})
-	if _, err := p.Run(); err != nil {
-		fmt.Printf("Error running program: %v\n", err)
-		return
-	}
-
 	columns := []table.Column{
 		{Title: "Name", Width: 10},
 		{Title: "Symbol", Width: 3},
