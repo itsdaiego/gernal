@@ -28,11 +28,16 @@ var baseStyle = lipgloss.NewStyle().
 	BorderForeground(lipgloss.Color("240"))
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q", "ctrl+d":
 			return m, tea.Quit
+		case "left", "right", "up", "down":
+			m.Table, cmd = m.Table.Update(msg)
+			return m, cmd
 		}
 	}
 
