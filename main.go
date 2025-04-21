@@ -9,8 +9,17 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+type page int
+
+const (
+	tableView page = iota
+	detailView
+)
+
 type model struct {
-	Table table.Model
+	Table       table.Model
+	page        page
+	selectedRow int
 }
 
 type Coin struct {
@@ -27,17 +36,35 @@ var baseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
 	BorderForeground(lipgloss.Color("240"))
 
+var detailStyle = lipgloss.NewStyle().
+	BorderStyle(lipgloss.RoundedBorder()).
+	BorderForeground(lipgloss.Color("240")).
+	Padding(1, 2).
+	Width(50)
+
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
-
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q", "ctrl+d":
 			return m, tea.Quit
 		case "left", "right", "up", "down":
-			m.Table, cmd = m.Table.Update(msg)
-			return m, cmd
+			if m.page == tableView {
+				m.Table, cmd = m.Table.Update(msg)
+				return m, cmd
+			}
+		case "enter":
+			if m.page == tableView {
+				m.page = detailView
+				m.selectedRow = m.Table.Cursor()
+				return m, nil
+			}
+		case "esc":
+			if m.page == detailView {
+				m.page = tableView
+				return m, nil
+			}
 		}
 	}
 
@@ -45,8 +72,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
+	if m.page == detailView {
+		rows := m.Table.Rows()
+		if m.selectedRow >= 0 && m.selectedRow < len(rows) {
+			selectedCoin := rows[m.selectedRow]
+			detail := fmt.Sprintf("Detailed Information\n\nName: %s\nSymbol: %s\nPrice: $%s\n\nPress ESC to go back",
+				selectedCoin[0], selectedCoin[1], selectedCoin[2])
+			return detailStyle.Render(detail)
+		}
+	}
 	return baseStyle.Render(m.Table.View()) + "\n"
-
 }
 
 func main() {
@@ -81,7 +116,10 @@ func main() {
 	t.SetHeight(10)
 	t.SetStyles(s)
 
-	m := model{t}
+	m := model{
+		Table: t,
+		page:  tableView,
+	}
 
 	if _, err := tea.NewProgram(m).Run(); err != nil {
 		fmt.Println("Error running program:", err)
