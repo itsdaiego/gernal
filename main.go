@@ -44,6 +44,7 @@ var detailStyle = lipgloss.NewStyle().
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -65,15 +66,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.page = tableView
 				return m, nil
 			}
+		case "shift+up":
+			m.Table.SetHeight(m.Table.Height() + 1)
+			return m, nil
+		case "shift+down":
+			m.Table.SetHeight(m.Table.Height() - 1)
+			return m, nil
+		case "shift+left":
+			m.Table.SetWidth(m.Table.Width() - 1)
+			return m, nil
+		case "shift+right":
+			m.Table.SetWidth(m.Table.Width() + 1)
+			return m, nil
 		}
 	}
-
 	return m, nil
 }
 
 func (m model) View() string {
 	if m.page == detailView {
 		rows := m.Table.Rows()
+
 		if m.selectedRow >= 0 && m.selectedRow < len(rows) {
 			selectedCoin := rows[m.selectedRow]
 			detail := fmt.Sprintf("Detailed Information\n\nName: %s\nSymbol: %s\nPrice: $%s\n\nPress ESC to go back",
@@ -81,7 +94,9 @@ func (m model) View() string {
 			return detailStyle.Render(detail)
 		}
 	}
-	return baseStyle.Render(m.Table.View()) + "\n"
+
+	helpText := "\nResize: shift+arrow keys | Select: arrow keys | View details: enter | Quit: q or ctrl+c"
+	return baseStyle.Render(m.Table.View()) + helpText + "\n"
 }
 
 func main() {
