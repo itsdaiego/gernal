@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	ui "main/internal/ui"
 	"os"
 
 	"github.com/charmbracelet/bubbles/table"
@@ -12,15 +13,18 @@ import (
 type page int
 
 const (
-	tableView page = iota
-	detailView
+	tableView  page = iota
+	detailView page = iota
 )
 
 type model struct {
-	Table       table.Model
-	page        page
-	selectedRow int
-	minColWidth int
+	Table           table.Model
+	page            page
+	selectedRow     int
+	minColWidth     int
+	minHeight       int
+	heightIncrement int
+	widthIncrement  int
 }
 
 type Coin struct {
@@ -35,13 +39,16 @@ func (m model) Init() tea.Cmd {
 
 var baseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color("240"))
+	BorderForeground(lipgloss.Color("240")).
+	Width(50).
+	Align(lipgloss.Center).
+	Padding(1, 2)
 
 var detailStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.RoundedBorder()).
 	BorderForeground(lipgloss.Color("240")).
-	Padding(1, 2).
-	Width(50)
+	Width(50).
+	Padding(1, 2)
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
@@ -51,13 +58,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "q", "ctrl+d":
 			return m, tea.Quit
-		case "left", "right", "up", "down":
+		case "up", "down":
 			if m.page == tableView {
 				m.Table, cmd = m.Table.Update(msg)
 				return m, cmd
 			}
 		case "enter":
 			if m.page == tableView {
+				m.Table.SetHeight(m.Table.Height())
+				m.Table.SetWidth(m.Table.Width())
 				m.page = detailView
 				m.selectedRow = m.Table.Cursor()
 				return m, nil
@@ -68,13 +77,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		case "shift+up":
-			m.Table.SetHeight(m.Table.Height() + 1)
-			return m, nil
-		case "shift+down":
-			if m.Table.Height() > 3 {
-				m.Table.SetHeight(m.Table.Height() - 1)
+			if m.Table.Height() > m.minHeight {
+				m.Table.SetHeight(m.Table.Height() - m.heightIncrement)
 			}
 			return m, nil
+		case "shift+down":
+			m.Table.SetHeight(m.Table.Height() + m.heightIncrement)
+			return m, nil
+
 		case "shift+left":
 			// Resize columns proportionally
 			cols := m.Table.Columns()
@@ -98,25 +108,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cols[minIdx].Width++
 			m.Table.SetColumns(cols)
 			return m, nil
-		case "1", "2", "3":
-			// Resize specific columns
-			colIdx := int(msg.String()[0] - '1')
-			cols := m.Table.Columns()
-			if colIdx >= 0 && colIdx < len(cols) {
-				cols[colIdx].Width++
-				m.Table.SetColumns(cols)
-			}
-			return m, nil
-		case "!", "@", "#":
-			// Decrease specific columns
-			keyMap := map[string]int{"!": 0, "@": 1, "#": 2}
-			colIdx := keyMap[msg.String()]
-			cols := m.Table.Columns()
-			if colIdx >= 0 && colIdx < len(cols) && cols[colIdx].Width > m.minColWidth {
-				cols[colIdx].Width--
-				m.Table.SetColumns(cols)
-			}
-			return m, nil
 		}
 	}
 	return m, nil
@@ -134,46 +125,10 @@ func (m model) View() string {
 		}
 	}
 
-	helpText := "\nResize table: shift+arrow keys | Resize columns: 1,2,3 to increase, !,@,# to decrease"
-	helpText += "\nSelect: arrow keys | View details: enter | Quit: q or ctrl+c"
-	return baseStyle.Render(m.Table.View()) + helpText + "\n"
-}
-
-// truncateString ensures text fits within column width with ellipsis
-func truncateString(s string, width int) string {
-	if width <= 3 {
-		return s[:width]
-	}
-	
-	if len(s) <= width {
-		return s
-	}
-	
-	return s[:width-3] + "..."
-}
-
-// formatRows ensures all data fits within column widths
-func formatRows(rows []table.Row, columns []table.Column) []table.Row {
-	formattedRows := make([]table.Row, len(rows))
-	
-	for i, row := range rows {
-		formattedRow := make(table.Row, len(row))
-		for j, cell := range row {
-			if j < len(columns) {
-				formattedRow[j] = truncateString(cell, columns[j].Width)
-			} else {
-				formattedRow[j] = cell
-			}
-		}
-		formattedRows[i] = formattedRow
-	}
-	
-	return formattedRows
+	return baseStyle.Render(m.Table.View())
 }
 
 func main() {
-	minColWidth := 3
-	
 	columns := []table.Column{
 		{Title: "Name", Width: 10},
 		{Title: "Symbol", Width: 6},
@@ -188,32 +143,15 @@ func main() {
 		{"Polkadot", "DOT", fmt.Sprintf("%.2f", 30.50)},
 	}
 
-	// Format rows to fit column widths
-	formattedRows := formatRows(rows, columns)
-
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(false)
-	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(false)
-
-	t := table.New(
-		table.WithColumns(columns),
-		table.WithRows(formattedRows),
-		table.WithFocused(true),
-	)
-	t.SetHeight(10)
-	t.SetStyles(s)
+	t := ui.Render(columns, rows)
 
 	m := model{
-		Table:       t,
-		page:        tableView,
-		minColWidth: minColWidth,
+		Table:           t,
+		page:            tableView,
+		minColWidth:     5,
+		minHeight:       5,
+		heightIncrement: 5,
+		widthIncrement:  5,
 	}
 
 	if _, err := tea.NewProgram(m).Run(); err != nil {
