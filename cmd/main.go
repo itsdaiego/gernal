@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	api "main/internal/api"
 	ui "main/internal/ui"
 	"os"
 
@@ -25,12 +26,6 @@ type model struct {
 	minHeight       int
 	heightIncrement int
 	widthIncrement  int
-}
-
-type Coin struct {
-	Name   string
-	Symbol string
-	Price  float64
 }
 
 func (m model) Init() tea.Cmd {
@@ -63,7 +58,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.Table, cmd = m.Table.Update(msg)
 				return m, cmd
 			}
-		case "enter":
+		case "enter", "right":
 			if m.page == tableView {
 				m.Table.SetHeight(m.Table.Height())
 				m.Table.SetWidth(m.Table.Width())
@@ -71,7 +66,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.selectedRow = m.Table.Cursor()
 				return m, nil
 			}
-		case "esc":
+		case "esc", "left":
 			if m.page == detailView {
 				m.page = tableView
 				return m, nil
@@ -135,15 +130,14 @@ func main() {
 		{Title: "Price", Width: 8},
 	}
 
-	rows := []table.Row{
-		{"Bitcoin", "BTC", fmt.Sprintf("%.2f", 60000.0)},
-		{"Ethereum", "ETH", fmt.Sprintf("%.2f", 4000.0)},
-		{"Litecoin", "LTC", fmt.Sprintf("%.2f", 200.0)},
-		{"Cardano", "ADA", fmt.Sprintf("%.2f", 1.20)},
-		{"Polkadot", "DOT", fmt.Sprintf("%.2f", 30.50)},
+	rows, err := api.FetchCoins()
+
+	if err != nil {
+		fmt.Println("Error fetching coins:", err)
+		os.Exit(1)
 	}
 
-	t := ui.Render(columns, rows)
+	t := ui.RenderTable(columns, rows)
 
 	m := model{
 		Table:           t,

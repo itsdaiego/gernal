@@ -5,7 +5,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-func Render(columns []table.Column, rows []table.Row) table.Model {
+func RenderTable(columns []table.Column, rows []table.Row) table.Model {
 
 	formattedRows := FormatRows(rows, columns)
 
