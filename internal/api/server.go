@@ -3,6 +3,8 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"net/http"
@@ -42,13 +44,33 @@ func makeRequest(coinID string, startDate string, endDate string) (*http.Respons
 	startDateTimestamp := convertToTimestamp(startDate)
 	endDateTimestamp := convertToTimestamp(endDate)
 
-	return http.Get(fmt.Sprintf("%s/%s/market_chart/range?vs_currency=usd&from=%s&to=%s", BASE_URL, coinID, startDateTimestamp, endDateTimestamp))
+	url := fmt.Sprintf("%s/%s/market_chart/range?vs_currency=usd&from=%s&to=%s", BASE_URL, strings.ToLower(coinID), startDateTimestamp, endDateTimestamp)
+
+	return http.Get(url)
 }
 
-func fetchCoinCurrentPrice(coinID string, startDate string, endDate string) ([][]float64, error) {
-	resp, err := makeRequest(coinID, startDate, endDate)
+var FAKE_DATA = true
 
-	println("Response:", resp.StatusCode, resp.Request.URL.String())
+func fetchCoinCurrentPrice(coinID string, startDate string, endDate string) ([][]float64, error) {
+	var data GekoCoinChartResponse
+
+	if FAKE_DATA {
+		file, err := os.ReadFile("mocks/btc.json")
+
+		if err != nil {
+			fmt.Println("Error reading mock data file:", err)
+			return nil, err
+		}
+
+		if err := json.Unmarshal(file, &data); err != nil {
+			fmt.Println("Error decoding mock JSON:", err)
+			return nil, err
+		}
+
+		return data.Prices, nil
+	}
+
+	resp, err := makeRequest(coinID, startDate, endDate)
 
 	if err != nil {
 		fmt.Println("Error fetching data:", err)
@@ -57,8 +79,6 @@ func fetchCoinCurrentPrice(coinID string, startDate string, endDate string) ([][
 
 	decoder := json.NewDecoder(resp.Body)
 	defer resp.Body.Close()
-
-	var data GekoCoinChartResponse
 
 	if err := decoder.Decode(&data); err != nil {
 		fmt.Println("Error decoding JSON:", err)
@@ -75,34 +95,44 @@ func fetchCoinCurrentPrice(coinID string, startDate string, endDate string) ([][
 	return nil, fmt.Errorf("price not found")
 }
 
-func FetchCoins() ([]table.Row, error) {
-	// coins := []string{"bitcoin", "ethereum", "litecoin", "cardano", "polkadot"}
-	coins := []string{"bitcoin"}
-	coinPrices := map[string]float64{}
-
-	for _, coin := range coins {
-		prices, err := fetchCoinCurrentPrice(coin, "01-01-2025", "05-05-2025")
-		if err != nil {
-			fmt.Println("Error fetching coin data:", err)
-			return nil, err
-		}
-
-		for i := 0; i < len(prices); i++ {
-			currentPriceTimestamp := fmt.Sprintf("%v", prices[i][0])
-			currentPrice := prices[i][1]
-
-			coinPrices[currentPriceTimestamp] = currentPrice
-		}
+func FetchCoinCurrentPrice(coinID string, startDate string, endDate string) (float64, error) {
+	prices, err := fetchCoinCurrentPrice(coinID, startDate, endDate)
+	if err != nil {
+		return 0, err
 	}
 
-	fmt.Println("Price:", coinPrices)
+	if len(prices) > 0 {
+		currentPrice := prices[len(prices)-1][1] // Get the last price in the list
+		return currentPrice, nil
+	}
+
+	return 0, fmt.Errorf("no prices found for coin %s", coinID)
+}
+
+func FetchCoins() ([]table.Row, error) {
+	// coins := []string{"bitcoin", "ethereum"}
+	// coinPrices := map[string]float64{}
+	//
+	// for _, coin := range coins {
+	// 	prices, err := fetchCoinCurrentPrice(coin, "01-01-2025", "05-05-2025")
+	// 	if err != nil {
+	// 		fmt.Println("Error fetching coin data:", err)
+	// 		return nil, err
+	// 	}
+	//
+	// 	for i := 0; i < len(prices); i++ {
+	// 		currentPriceTimestamp := fmt.Sprintf("%v", prices[i][0])
+	// 		currentPrice := prices[i][1]
+	//
+	// 		coinPrices[currentPriceTimestamp] = currentPrice
+	// 	}
+	// }
+
+	// fmt.Println("Price:", coinPrices)
 
 	coinRows := []table.Row{
 		{"Bitcoin", "BTC", fmt.Sprintf("%.2f", 60000.0)},
 		{"Ethereum", "ETH", fmt.Sprintf("%.2f", 4000.0)},
-		{"Litecoin", "LTC", fmt.Sprintf("%.2f", 200.0)},
-		{"Cardano", "ADA", fmt.Sprintf("%.2f", 1.20)},
-		{"Polkadot", "DOT", fmt.Sprintf("%.2f", 30.50)},
 	}
 
 	return coinRows, nil

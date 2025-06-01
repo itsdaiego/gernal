@@ -114,8 +114,16 @@ func (m model) View() string {
 
 		if m.selectedRow >= 0 && m.selectedRow < len(rows) {
 			selectedCoin := rows[m.selectedRow]
-			detail := fmt.Sprintf("Detailed Information\n\nName: %s\nSymbol: %s\nPrice: $%s\n\nPress ESC to go back",
-				selectedCoin[0], selectedCoin[1], selectedCoin[2])
+			coinPrice, err := api.FetchCoinCurrentPrice(selectedCoin[0], "01-01-2025", "05-05-2025")
+
+			if err != nil {
+				detail := fmt.Sprintf("Error fetching price for %s: %v\n\nPress ESC to go back",
+					selectedCoin[0], err)
+				return detailStyle.Render(detail)
+			}
+
+			detail := fmt.Sprintf("Detailed Information\n\nName: %s\nSymbol: %s\nPrice: $%.2f\n\nPress ESC to go back",
+				selectedCoin[0], selectedCoin[1], coinPrice)
 			return detailStyle.Render(detail)
 		}
 	}
