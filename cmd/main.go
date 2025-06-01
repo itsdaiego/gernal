@@ -5,17 +5,21 @@ import (
 	api "main/internal/api"
 	ui "main/internal/ui"
 	"os"
+	"time"
 
+	tslc "github.com/NimbleMarkets/ntcharts/linechart/timeserieslinechart"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/charmbracelet/lipgloss"
 )
 
 type page int
 
 const (
-	tableView  page = iota
-	detailView page = iota
+	tableView      page = iota
+	detailView     page = iota
+	timeseriesView page = iota
 )
 
 type model struct {
@@ -26,6 +30,7 @@ type model struct {
 	minHeight       int
 	heightIncrement int
 	widthIncrement  int
+	chart           *tslc.Model
 }
 
 func (m model) Init() tea.Cmd {
@@ -43,6 +48,12 @@ var detailStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.RoundedBorder()).
 	BorderForeground(lipgloss.Color("240")).
 	Width(50).
+	Padding(1, 2)
+
+var timeseriesStyle = lipgloss.NewStyle().
+	BorderStyle(lipgloss.RoundedBorder()).
+	BorderForeground(lipgloss.Color("240")).
+	Width(300).
 	Padding(1, 2)
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -66,9 +77,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.selectedRow = m.Table.Cursor()
 				return m, nil
 			}
+			if m.page == detailView {
+				m.Table.SetHeight(m.Table.Height())
+				m.Table.SetWidth(m.Table.Width())
+				m.loadChartData()
+				m.page = timeseriesView
+				return m, nil
+			}
 		case "esc", "left":
 			if m.page == detailView {
 				m.page = tableView
+				return m, nil
+			}
+			if m.page == timeseriesView {
+				m.page = detailView
 				return m, nil
 			}
 		case "shift+up":
@@ -105,6 +127,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	}
+
 	return m, nil
 }
 
@@ -127,8 +150,58 @@ func (m model) View() string {
 			return detailStyle.Render(detail)
 		}
 	}
+	if m.page == timeseriesView {
+		if m.chart == nil {
+			return timeseriesStyle.Render("No chart data available\n\nPress ESC to go back")
+		}
+
+		rows := m.Table.Rows()
+		if m.selectedRow >= 0 && m.selectedRow < len(rows) {
+			selectedCoin := rows[m.selectedRow]
+			coinName := selectedCoin[0]
+
+			chartTitle := fmt.Sprintf("%s Price Chart", coinName)
+			chartView := fmt.Sprintf("%s\n\n%s", chartTitle, m.chart.View())
+			return timeseriesStyle.Render(chartView)
+		}
+
+		return timeseriesStyle.Render("No coin selected\n\nPress ESC to go back")
+	}
 
 	return baseStyle.Render(m.Table.View())
+}
+
+func (m *model) loadChartData() {
+	rows := m.Table.Rows()
+
+	if m.selectedRow < 0 || m.selectedRow >= len(rows) {
+		return
+	}
+
+	selectedCoin := rows[m.selectedRow]
+	coinName := selectedCoin[0]
+
+	chart := tslc.New(150, 25)
+
+	prices, err := api.FetchCoinPriceByDate(coinName, "01-01-2025", "05-05-2025")
+	if err != nil || len(prices) == 0 {
+		return
+	}
+
+	for _, price := range prices {
+		timestamp := int64(price[0]) / 1000
+		chart.Push(tslc.TimePoint{Time: time.Unix(timestamp, 0), Value: price[1]})
+	}
+
+	chart.SetStyle(
+		lipgloss.NewStyle().
+			Foreground(lipgloss.Color("9")),
+	)
+
+	chart.Focus()
+	chart.DrawBrailleAll()
+
+	m.chart = &chart
 }
 
 func main() {
@@ -156,7 +229,7 @@ func main() {
 		widthIncrement:  5,
 	}
 
-	if _, err := tea.NewProgram(m).Run(); err != nil {
+	if _, err := tea.NewProgram(m, tea.WithAltScreen()).Run(); err != nil {
 		fmt.Println("Error running program:", err)
 		os.Exit(1)
 	}

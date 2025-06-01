@@ -109,6 +109,15 @@ func FetchCoinCurrentPrice(coinID string, startDate string, endDate string) (flo
 	return 0, fmt.Errorf("no prices found for coin %s", coinID)
 }
 
+func FetchCoinPriceByDate(coinID string, startDate string, endDate string) ([][]float64, error) {
+	prices, err := fetchCoinCurrentPrice(coinID, startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+
+	return prices, nil
+}
+
 func FetchCoins() ([]table.Row, error) {
 	// coins := []string{"bitcoin", "ethereum"}
 	// coinPrices := map[string]float64{}
