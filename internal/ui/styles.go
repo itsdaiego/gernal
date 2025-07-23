@@ -6,7 +6,6 @@ import (
 )
 
 func RenderTable(columns []table.Column, rows []table.Row) table.Model {
-
 	formattedRows := FormatRows(rows, columns)
 
 	s := table.DefaultStyles()
@@ -29,4 +28,29 @@ func RenderTable(columns []table.Column, rows []table.Row) table.Model {
 	t.SetStyles(s)
 
 	return t
+}
+
+func BaseStyle() lipgloss.Style {
+	return lipgloss.NewStyle().
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		Width(50).
+		Align(lipgloss.Center).
+		Padding(1, 2)
+}
+
+func DetailStyle() lipgloss.Style {
+	return lipgloss.NewStyle().
+		BorderStyle(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		Width(50).
+		Padding(1, 2)
+}
+
+func TimeseriesStyle() lipgloss.Style {
+	return lipgloss.NewStyle().
+		BorderStyle(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		Width(300).
+		Padding(1, 2)
 }

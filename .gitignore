@@ -1,3 +1,6 @@
 .cursor/
 .aider/
 
+# Ignore debug binaries in any directory
+**/__debug_bin*
+

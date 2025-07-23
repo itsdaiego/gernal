@@ -37,24 +37,7 @@ func (m model) Init() tea.Cmd {
 	return nil
 }
 
-var baseStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color("240")).
-	Width(50).
-	Align(lipgloss.Center).
-	Padding(1, 2)
-
-var detailStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.RoundedBorder()).
-	BorderForeground(lipgloss.Color("240")).
-	Width(50).
-	Padding(1, 2)
-
-var timeseriesStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.RoundedBorder()).
-	BorderForeground(lipgloss.Color("240")).
-	Width(300).
-	Padding(1, 2)
+// Styles moved to internal/ui/styles.go
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
@@ -142,17 +125,17 @@ func (m model) View() string {
 			if err != nil {
 				detail := fmt.Sprintf("Error fetching price for %s: %v\n\nPress ESC to go back",
 					selectedCoin[0], err)
-				return detailStyle.Render(detail)
+				return ui.DetailStyle().Render(detail)
 			}
 
 			detail := fmt.Sprintf("Detailed Information\n\nName: %s\nSymbol: %s\nPrice: $%.2f\n\nPress ESC to go back",
 				selectedCoin[0], selectedCoin[1], coinPrice)
-			return detailStyle.Render(detail)
+			return ui.DetailStyle().Render(detail)
 		}
 	}
 	if m.page == timeseriesView {
 		if m.chart == nil {
-			return timeseriesStyle.Render("No chart data available\n\nPress ESC to go back")
+			return ui.TimeseriesStyle().Render("No chart data available\n\nPress ESC to go back")
 		}
 
 		rows := m.Table.Rows()
@@ -162,13 +145,13 @@ func (m model) View() string {
 
 			chartTitle := fmt.Sprintf("%s Price Chart", coinName)
 			chartView := fmt.Sprintf("%s\n\n%s", chartTitle, m.chart.View())
-			return timeseriesStyle.Render(chartView)
+			return ui.TimeseriesStyle().Render(chartView)
 		}
 
-		return timeseriesStyle.Render("No coin selected\n\nPress ESC to go back")
+		return ui.TimeseriesStyle().Render("No coin selected\n\nPress ESC to go back")
 	}
 
-	return baseStyle.Render(m.Table.View())
+	return ui.BaseStyle().Render(m.Table.View())
 }
 
 func (m *model) loadChartData() {
