@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	api "main/internal/api"
 	ui "main/internal/ui"
@@ -188,13 +189,25 @@ func (m *model) loadChartData() {
 }
 
 func main() {
+	startDateFlag := flag.String("start", time.Now().AddDate(0, -1, 0).Format("01-02-2006"), "Start date for price data (MM-DD-YYYY)")
+	endDateFlag := flag.String("end", time.Now().Format("01-02-2006"), "End date for price data (MM-DD-YYYY)")
+	flag.Parse()
+
+	if *startDateFlag == "" {
+		*startDateFlag = time.Now().Format("01-02-2006")
+	}
+
+	if *endDateFlag == "" {
+		*endDateFlag = time.Now().Format("01-02-2006")
+	}
+
 	columns := []table.Column{
 		{Title: "Name", Width: 10},
 		{Title: "Symbol", Width: 6},
 		{Title: "Price", Width: 8},
 	}
 
-	rows, err := api.FetchCoins()
+	rows, err := api.FetchCoins(*startDateFlag, *endDateFlag)
 
 	if err != nil {
 		fmt.Println("Error fetching coins:", err)

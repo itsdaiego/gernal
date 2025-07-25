@@ -118,30 +118,30 @@ func FetchCoinPriceByDate(coinID string, startDate string, endDate string) ([][]
 	return prices, nil
 }
 
-func FetchCoins() ([]table.Row, error) {
-	// coins := []string{"bitcoin", "ethereum"}
-	// coinPrices := map[string]float64{}
-	//
-	// for _, coin := range coins {
-	// 	prices, err := fetchCoinCurrentPrice(coin, "01-01-2025", "05-05-2025")
-	// 	if err != nil {
-	// 		fmt.Println("Error fetching coin data:", err)
-	// 		return nil, err
-	// 	}
-	//
-	// 	for i := 0; i < len(prices); i++ {
-	// 		currentPriceTimestamp := fmt.Sprintf("%v", prices[i][0])
-	// 		currentPrice := prices[i][1]
-	//
-	// 		coinPrices[currentPriceTimestamp] = currentPrice
-	// 	}
-	// }
+func FetchCoins(startDate string, endDate string) ([]table.Row, error) {
+	coins := []string{"bitcoin", "ethereum"}
+	coinRows := []table.Row{}
 
-	// fmt.Println("Price:", coinPrices)
+	for _, coin := range coins {
+		price, err := FetchCoinCurrentPrice(coin, startDate, endDate)
+		if err != nil {
+			fmt.Printf("Error fetching price for %s: %v\n", coin, err)
+			continue
+		}
 
-	coinRows := []table.Row{
-		{"Bitcoin", "BTC", fmt.Sprintf("%.2f", 60000.0)},
-		{"Ethereum", "ETH", fmt.Sprintf("%.2f", 4000.0)},
+		var symbol string
+		switch coin {
+		case "bitcoin":
+			symbol = "BTC"
+		case "ethereum":
+			symbol = "ETH"
+		}
+
+		coinRows = append(coinRows, []table.Row{{coin, symbol, fmt.Sprintf("%.2f", price)}}...)
+	}
+
+	if len(coinRows) == 0 {
+		return nil, fmt.Errorf("no coin prices could be fetched")
 	}
 
 	return coinRows, nil
